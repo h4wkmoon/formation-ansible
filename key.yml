@@ -1,0 +1,26 @@
+---
+- name: Création d'un compte de service
+  hosts: all
+  become: yes
+  user: ubuntu
+  vars:
+      createduser: ansible
+      keyfile: $HOME/.ssh/id_rsa.pub
+  tasks:
+  - name: Ajout d'un utilisateur
+    user:
+      name: "{{createduser}}"
+      groups: ssh
+      comment: "Compte de service pour ansible"
+
+  - name: Ajout de la clé
+    # debug: msg="toto"
+    authorized_key: user="{{createduser}}" key='{{lookup('file','/home/fpege/.ssh/id_rsa.pub')}}'
+    # authorized_keys: user="{{createduser}}" key="{{keyfile}}"
+  #
+  - name: Ajout des droits sudo
+    lineinfile: >
+      create="yes"
+      line="{{createduser}} ALL=NOPASSWD: ALL"
+      dest="/etc/sudoers.d/{{createduser}}"
+      validate="visudo -cf %s"

@@ -1,0 +1,72 @@
+---
+- name: Création d'un infra de test pour Ansible
+  hosts: localhost
+  become: yes
+  vars:
+    num_srv: 6
+  tasks:
+  - name: Ajout du PPA ansible
+    apt_repository:
+      repo: 'ppa:ansible/ansible'
+
+  - name: Mise à jour du cache apt et Mise à jour de ansible
+    apt:
+      name: ansible
+      state: latest
+      update_cache: yes
+      cache_valid_time: 3600
+
+  - name: Installation de pip et lxc-dec
+    apt:
+      name: "{{item}}"
+      state: present
+      update_cache: no
+      install_recommends: no
+    with_items:
+    - lxc-dev
+    - python-pip
+
+  - name: Mise à jour de pip avec pip
+    pip:
+      name: pip
+      state: latest
+
+  - name: Installation de lxc-python2
+    pip:
+      name: lxc-python2
+      state: latest
+
+  - name: Création des VMs
+    lxc_container:
+      name: "{{item}}"
+      template: ubuntu
+      state: started
+    with_sequence: start=1 end={{num_srv}} format=srv%02x
+    delegate_to: localhost
+    register: create
+
+  - name: pause
+    pause: seconds=10
+    when: create|changed
+
+  - name: Installation de python-simplejson et collecte des data.
+    lxc_container:
+      name: "{{item}}"
+      template: ubuntu
+      state: started
+      container_command: |
+        apt-get update
+        apt-get install -y python-simplejson
+    with_sequence: start=1 end={{num_srv}} format=srv%02x
+    register: lxc
+    delegate_to: localhost
+    when: create|changed
+
+  - name: inventory
+    lineinfile: >
+      create=yes
+      dest=./inventory
+      regexp="^{{item.item}} "
+      line="{{item.item}} ansible_ssh_host={{item.lxc_container.ips.0}}"
+    with_items: '{{lxc.results}}'
+    when: create|changed
