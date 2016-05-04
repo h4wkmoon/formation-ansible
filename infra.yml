@@ -8,6 +8,7 @@
   - name: Ajout du PPA ansible
     apt_repository:
       repo: 'ppa:ansible/ansible'
+    when: ansible_distribution_release != 'xenial'
 
   - name: Mise à jour du cache apt et Mise à jour de ansible
     apt:
@@ -23,8 +24,14 @@
       update_cache: no
       install_recommends: no
     with_items:
-    - lxc-dev
+        - lxc-dev
     - python-pip
+    - python-setuptools
+    - build-essential
+    - python-dev
+    - lxc
+    - lxc-templates
+    - debootstrap
 
   - name: Mise à jour de pip avec pip
     pip:
